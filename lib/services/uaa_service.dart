@@ -14,7 +14,7 @@ class UaaService {
     bool rememberMe = true,
   }) async {
     // Thử các endpoint theo thứ tự ưu tiên
-
+    
     // 1. Thử endpoint login chính với email
     try {
       final response = await _client.post(
@@ -54,7 +54,7 @@ class UaaService {
               }),
             );
             return _extractToken(response.body);
-          } on ApiException catch (e3) {
+            } on ApiException catch (e3) {
             // 4. Thử endpoint cũ (fallback)
             try {
               final response = await _client.post(
@@ -93,7 +93,7 @@ class UaaService {
   String _extractToken(String responseBody) {
     try {
       final decoded = jsonDecode(responseBody);
-
+      
       // Hỗ trợ nhiều format response
       String? token;
       if (decoded is Map<String, dynamic>) {
@@ -102,7 +102,7 @@ class UaaService {
             decoded['access_token'] as String? ??
             decoded['jwt'] as String?;
       }
-
+      
       if (token == null || token.isEmpty) {
         throw ApiException(
           'Không tìm thấy token trong response. Response: $responseBody',
@@ -122,29 +122,68 @@ class UaaService {
   }
 
   Future<List<dynamic>> fetchMenuViews(String token) async {
-    final response =
-        await _client.get(ApiEndpoints.menuViews, headers: _headers(token));
-    return _decodeList(response.body);
+    try {
+      final response =
+          await _client.get(ApiEndpoints.menuViews, headers: _headers(token));
+      return _decodeList(response.body);
+    } catch (e) {
+      // Nếu có lỗi, thử endpoint không có serviceId
+      try {
+        final response = await _client.get(
+          '/api/owner/menu-views',
+          headers: _headers(token),
+        );
+        return _decodeList(response.body);
+      } catch (_) {
+        rethrow;
+      }
+    }
   }
 
   Future<Map<String, dynamic>> fetchAccountInfo(String token) async {
-    final response =
-        await _client.get(ApiEndpoints.accountInfo, headers: _headers(token));
-    return _decodeMap(response.body);
+    try {
+      final response =
+          await _client.get(ApiEndpoints.accountInfo, headers: _headers(token));
+      return _decodeMap(response.body);
+    } catch (e) {
+      // Thử endpoint khác nếu có
+      try {
+        final response = await _client.get(
+          '/api/account',
+          headers: _headers(token),
+        );
+        return _decodeMap(response.body);
+      } catch (_) {
+        // Trả về empty map thay vì throw để không block các API khác
+        return {};
+      }
+    }
   }
 
   Future<List<dynamic>> fetchUserRoles(String token) async {
-    final response = await _client.get(
-      ApiEndpoints.userRoleSearch,
-      headers: _headers(token),
-    );
-    final body = jsonDecode(response.body);
-    if (body is List) return body;
-    if (body is Map<String, dynamic>) {
-      final content = body['content'];
-      if (content is List) return content;
+    try {
+      final response = await _client.get(
+        ApiEndpoints.userRoleSearch,
+        headers: _headers(token),
+      );
+      final body = jsonDecode(response.body);
+      if (body is List) return body;
+      if (body is Map<String, dynamic>) {
+        final content = body['content'];
+        if (content is List) return content;
+        // Thử các key khác
+        if (body.containsKey('data') && body['data'] is List) {
+          return body['data'] as List;
+        }
+        if (body.containsKey('items') && body['items'] is List) {
+          return body['items'] as List;
+        }
+      }
+      return [];
+    } catch (e) {
+      // Trả về empty list thay vì throw
+      return [];
     }
-    return [];
   }
 
   Map<String, String> _headers(String token) => {
@@ -153,18 +192,46 @@ class UaaService {
       };
 
   List<dynamic> _decodeList(String body) {
-    final decoded = jsonDecode(body);
-    if (decoded is List) return decoded;
-    if (decoded is Map<String, dynamic>) {
-      final embedded = decoded['data'];
-      if (embedded is List) return embedded;
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is List) return decoded;
+      if (decoded is Map<String, dynamic>) {
+        // Thử nhiều key khác nhau
+        if (decoded.containsKey('data') && decoded['data'] is List) {
+          return decoded['data'] as List;
+        }
+        if (decoded.containsKey('content') && decoded['content'] is List) {
+          return decoded['content'] as List;
+        }
+        if (decoded.containsKey('items') && decoded['items'] is List) {
+          return decoded['items'] as List;
+        }
+        if (decoded.containsKey('results') && decoded['results'] is List) {
+          return decoded['results'] as List;
+        }
+        // Nếu có key đầu tiên là List
+        for (final value in decoded.values) {
+          if (value is List) return value;
+        }
+      }
+      return [];
+    } catch (e) {
+      return [];
     }
-    return [];
   }
 
   Map<String, dynamic> _decodeMap(String body) {
-    final decoded = jsonDecode(body);
-    if (decoded is Map<String, dynamic>) return decoded;
-    return {'raw': decoded};
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      // Nếu là List, lấy phần tử đầu tiên
+      if (decoded is List && decoded.isNotEmpty && decoded.first is Map) {
+        return decoded.first as Map<String, dynamic>;
+      }
+      return {'raw': decoded.toString()};
+    } catch (e) {
+      return {'error': e.toString()};
+    }
   }
 }
+

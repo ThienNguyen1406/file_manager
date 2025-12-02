@@ -13,7 +13,10 @@ class DriveFile {
     required this.icon,
     required this.color,
     this.isStarred = false,
+    this.isFavorite = false,
     this.folderId,
+    this.isDeleted = false,
+    this.deletedAt,
   });
 
   final String id;
@@ -25,7 +28,10 @@ class DriveFile {
   final IconData icon;
   final Color color;
   bool isStarred;
+  bool isFavorite;
   final String? folderId; // ID của folder chứa file này, null nếu ở root
+  bool isDeleted;
+  DateTime? deletedAt;
 
   bool matchesQuery(String query) =>
       query.isEmpty || name.toLowerCase().contains(query.toLowerCase());
