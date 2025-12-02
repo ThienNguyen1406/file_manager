@@ -8,6 +8,7 @@ import 'favorites/favorites_page.dart';
 import 'home/home_page.dart';
 import 'my_files/my_files_page.dart';
 import 'shared/shared_page.dart';
+import 'storage/storage_space_page.dart';
 import 'trash/trash_page.dart';
 
 class MainNavigator extends StatefulWidget {
@@ -39,6 +40,8 @@ class _MainNavigatorState extends State<MainNavigator> {
         return const FavoritesPage();
       case '/trash':
         return const TrashPage();
+      case '/storage':
+        return const StorageSpacePage();
       default:
         return const HomePage();
     }
@@ -47,7 +50,7 @@ class _MainNavigatorState extends State<MainNavigator> {
   @override
   Widget build(BuildContext context) {
     final driveProvider = context.watch<DriveProvider>();
-    
+
     return Scaffold(
       drawer: AppDrawer(
         currentRoute: _currentRoute,
@@ -56,15 +59,11 @@ class _MainNavigatorState extends State<MainNavigator> {
         totalStorage: driveProvider.storageLimitGb,
       ),
       appBar: AppBar(
-        title: _currentRoute == '/home'
-            ? null
-            : Text(_getAppBarTitle()),
-        backgroundColor: _currentRoute == '/home'
-            ? Colors.transparent
-            : AppColors.primary,
-        foregroundColor: _currentRoute == '/home'
-            ? AppColors.primaryDark
-            : Colors.white,
+        title: _currentRoute == '/home' ? null : Text(_getAppBarTitle()),
+        backgroundColor:
+            _currentRoute == '/home' ? Colors.transparent : AppColors.primary,
+        foregroundColor:
+            _currentRoute == '/home' ? AppColors.primaryDark : Colors.white,
         elevation: _currentRoute == '/home' ? 0 : null,
         leading: Builder(
           builder: (context) => IconButton(
@@ -81,7 +80,7 @@ class _MainNavigatorState extends State<MainNavigator> {
       body: _getCurrentPage(),
     );
   }
-  
+
   String _getAppBarTitle() {
     switch (_currentRoute) {
       case '/my-files':
@@ -92,9 +91,11 @@ class _MainNavigatorState extends State<MainNavigator> {
         return 'Yêu thích';
       case '/trash':
         return 'Thùng rác';
+      case '/storage':
+        return 'Không gian lưu trữ của tôi';
+
       default:
         return 'Green Drive';
     }
   }
 }
-

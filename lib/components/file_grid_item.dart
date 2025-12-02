@@ -25,9 +25,11 @@ class FileGridItem extends StatelessWidget {
           border: Border.all(color: AppColors.border),
         ),
         child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
+          crossAxisAlignment: CrossAxisAlignment.center,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             Row(
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 Container(
                   height: 40,
@@ -38,7 +40,7 @@ class FileGridItem extends StatelessWidget {
                   ),
                   child: Icon(file.icon, color: AppColors.primaryDark, size: 20),
                 ),
-                const Spacer(),
+                const SizedBox(width: 8),
                 IconButton(
                   icon: Icon(
                     file.isFavorite 
@@ -63,6 +65,7 @@ class FileGridItem extends StatelessWidget {
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                     fontWeight: FontWeight.w600,
                   ),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 4),
             Text(
@@ -70,6 +73,7 @@ class FileGridItem extends StatelessWidget {
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                     color: AppColors.textSecondary,
                   ),
+              textAlign: TextAlign.center,
             ),
           ],
         ),

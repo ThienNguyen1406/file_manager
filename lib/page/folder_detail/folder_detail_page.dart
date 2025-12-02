@@ -117,6 +117,7 @@ class _FolderDetailPageState extends State<FolderDetailPage> {
       appBar: AppBar(
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
             if (currentFolder != null)
               Text(

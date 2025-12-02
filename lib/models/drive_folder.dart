@@ -26,7 +26,45 @@ class DriveFolder {
   DateTime? deletedAt;
 
   bool get isRoot => parentId == null || parentId!.isEmpty;
-  
+
+  Map<String, dynamic> toJson() {
+    return {
+      'id': id,
+      'name': name,
+      'fileCount': fileCount,
+      'storageUsedGb': storageUsedGb,
+      'color': color.value, // Lưu color value
+      'icon': icon.codePoint, // Lưu icon codePoint
+      'iconFontFamily': icon.fontFamily,
+      'iconPackage': icon.fontPackage,
+      'parentId': parentId,
+      'isFavorite': isFavorite,
+      'isDeleted': isDeleted,
+      'deletedAt': deletedAt?.toIso8601String(),
+    };
+  }
+
+  factory DriveFolder.fromJson(Map<String, dynamic> json) {
+    return DriveFolder(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      fileCount: json['fileCount'] as int,
+      storageUsedGb: (json['storageUsedGb'] as num).toDouble(),
+      color: Color(json['color'] as int),
+      icon: IconData(
+        json['icon'] as int,
+        fontFamily: json['iconFontFamily'] as String?,
+        fontPackage: json['iconPackage'] as String?,
+      ),
+      parentId: json['parentId'] as String?,
+      isFavorite: json['isFavorite'] as bool? ?? false,
+      isDeleted: json['isDeleted'] as bool? ?? false,
+      deletedAt: json['deletedAt'] != null
+          ? DateTime.parse(json['deletedAt'] as String)
+          : null,
+    );
+  }
+
   DriveFolder copyWith({
     String? id,
     String? name,
@@ -51,4 +89,3 @@ class DriveFolder {
     );
   }
 }
-

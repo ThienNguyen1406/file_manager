@@ -3,6 +3,7 @@ import 'package:flutter/foundation.dart';
 import '../models/account_info.dart';
 import '../models/menu_view.dart';
 import '../models/user_role.dart';
+import '../services/api_client.dart';
 import '../services/uaa_service.dart';
 
 class RemoteDataProvider extends ChangeNotifier {
@@ -16,6 +17,7 @@ class RemoteDataProvider extends ChangeNotifier {
   List<MenuView>? _menuViews;
   AccountInfo? _accountInfo;
   List<UserRole>? _userRoles;
+  bool _hasInvalidToken = false;
 
   bool get isLoading => _isLoading;
   String? get error => _error;
@@ -23,6 +25,7 @@ class RemoteDataProvider extends ChangeNotifier {
   List<MenuView>? get menuViews => _menuViews;
   AccountInfo? get accountInfo => _accountInfo;
   List<UserRole>? get userRoles => _userRoles;
+  bool get hasInvalidToken => _hasInvalidToken;
   
   // Lấy các menu đã kích hoạt (dịch vụ của user)
   List<MenuView> get activatedMenus {
@@ -66,6 +69,14 @@ class RemoteDataProvider extends ChangeNotifier {
         if (kDebugMode) {
           debugPrint('❌ MenuSwaps error: $e');
         }
+        // Nếu là lỗi 401 (unauthorized), token không hợp lệ
+        if (e is ApiException && e.statusCode == 401) {
+          if (kDebugMode) {
+            debugPrint('🔴 Token invalid (401), will trigger auto logout');
+          }
+          // Set flag để AuthWrapper xử lý
+          _hasInvalidToken = true;
+        }
       }
       
       // MenuViews
@@ -83,6 +94,14 @@ class RemoteDataProvider extends ChangeNotifier {
         errors.add('MenuViews: ${e.toString()}');
         if (kDebugMode) {
           debugPrint('❌ MenuViews error: $e');
+        }
+        // Nếu là lỗi 401 (unauthorized), token không hợp lệ
+        if (e is ApiException && e.statusCode == 401) {
+          if (kDebugMode) {
+            debugPrint('🔴 Token invalid (401), will trigger auto logout');
+          }
+          // Set flag để AuthWrapper xử lý
+          _hasInvalidToken = true;
         }
       }
       
@@ -156,6 +175,7 @@ class RemoteDataProvider extends ChangeNotifier {
     _accountInfo = null;
     _userRoles = null;
     _error = null;
+    _hasInvalidToken = false;
     notifyListeners();
   }
 

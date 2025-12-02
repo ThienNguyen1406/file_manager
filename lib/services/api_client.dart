@@ -56,6 +56,12 @@ class ApiClient {
 
   Uri _buildUri(String path) {
     if (path.startsWith('http')) return Uri.parse(path);
+    // Kiểm tra nếu path bắt đầu với /api/resource, /api/workspaces, etc. thì dùng s3BaseUrl
+    if (path.startsWith('/api/resource') || 
+        path.startsWith('/api/workspaces') ||
+        path.startsWith('/api/resource/')) {
+      return Uri.parse('${ApiEndpoints.s3BaseUrl}$path');
+    }
     return Uri.parse('${ApiEndpoints.baseUrl}$path');
   }
 

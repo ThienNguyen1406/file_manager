@@ -1,6 +1,12 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/scheduler.dart';
+import 'package:provider/provider.dart';
 
 import '../constants/app_colors.dart';
+import '../providers/auth_provider.dart';
+import '../providers/drive_provider.dart';
+import '../providers/remote_data_provider.dart';
 
 class AppDrawer extends StatelessWidget {
   const AppDrawer({
@@ -127,10 +133,47 @@ class AppDrawer extends StatelessWidget {
                   title: 'Không gian lưu trữ của tôi',
                   icon: Icons.storage_outlined,
                   children: [
-                    _StorageItem(
-                      icon: Icons.account_circle,
-                      label: 'TrungLM',
-                      color: AppColors.primary,
+                    Builder(
+                      builder: (context) {
+                        // Ưu tiên lấy tên từ S3 Resource Details API (storageSpaceName)
+                        final driveProvider = context.watch<DriveProvider>();
+                        String userName = 'TrungLM'; // Default
+
+                        // Lấy từ S3 API trước (chính xác nhất)
+                        if (driveProvider.storageSpaceName != null &&
+                            driveProvider.storageSpaceName!.isNotEmpty) {
+                          userName = driveProvider.storageSpaceName!;
+                        } else {
+                          // Fallback: lấy từ UAA AccountInfo nếu chưa có từ S3
+                          final remoteData =
+                              context.watch<RemoteDataProvider>();
+                          if (remoteData.accountInfo != null) {
+                            userName = remoteData
+                                    .accountInfo!.fullName.isNotEmpty
+                                ? remoteData.accountInfo!.fullName
+                                : (remoteData.accountInfo!.firstName.isNotEmpty
+                                    ? remoteData.accountInfo!.firstName
+                                    : 'TrungLM');
+                          } else if (remoteData.userRoles != null &&
+                              remoteData.userRoles!.isNotEmpty) {
+                            final role = remoteData.userRoles!.first;
+                            userName = role.personalName.isNotEmpty
+                                ? role.personalName
+                                : 'TrungLM';
+                          }
+                        }
+
+                        return _StorageItem(
+                          icon: Icons.account_circle,
+                          label: userName,
+                          color: AppColors.primary,
+                          onTap: () {
+                            Navigator.pop(context); // Đóng drawer
+                            onNavigate(
+                                '/storage'); // Navigate đến trang storage
+                          },
+                        );
+                      },
                     ),
                     // Có thể thêm nhiều storage items khác
                   ],
@@ -141,7 +184,8 @@ class AppDrawer extends StatelessWidget {
                   children: [
                     // Có thể thêm shared storage items
                     Padding(
-                      padding: const EdgeInsets.only(left: 48, top: 8, bottom: 8),
+                      padding:
+                          const EdgeInsets.only(left: 48, top: 8, bottom: 8),
                       child: Text(
                         'Chưa có không gian được chia sẻ',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
@@ -154,6 +198,7 @@ class AppDrawer extends StatelessWidget {
               ],
             ),
           ),
+          const Divider(height: 1),
           // Settings
           ListTile(
             leading: Icon(Icons.settings_outlined, color: Colors.grey[600]),
@@ -163,9 +208,72 @@ class AppDrawer extends StatelessWidget {
             ),
             onTap: () => onNavigate('/settings'),
           ),
+          // Logout
+          ListTile(
+            leading: Icon(Icons.logout, color: Colors.red[600]),
+            title: Text(
+              'Đăng xuất',
+              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                    color: Colors.red[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+            ),
+            onTap: () => _handleLogout(context),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _handleLogout(BuildContext context) async {
+    // Đóng drawer trước
+    Navigator.of(context).pop();
+
+    // Hiển thị dialog xác nhận
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Đăng xuất'),
+        content: const Text('Bạn có chắc chắn muốn đăng xuất?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Hủy'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Đăng xuất'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm == true && context.mounted) {
+      // Lấy providers và logout
+      final authProvider = context.read<AuthProvider>();
+      final driveProvider = context.read<DriveProvider>();
+      final remoteDataProvider = context.read<RemoteDataProvider>();
+
+      // Xóa dữ liệu
+      await authProvider.logout();
+      await driveProvider.clearAllData();
+      remoteDataProvider.reset();
+
+      // AuthWrapper sẽ tự động rebuild và hiển thị LoginPage khi isAuthenticated = false
+      // Pop tất cả routes để đảm bảo navigation stack được clear
+      if (context.mounted) {
+        // Đóng drawer nếu còn mở
+        Navigator.of(context).popUntil((route) => route.isFirst);
+
+        // Đảm bảo AuthWrapper rebuild bằng cách trigger một frame
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          // AuthWrapper sẽ tự động rebuild vì AuthProvider đã notifyListeners()
+        });
+      }
+    }
   }
 }
 
@@ -255,11 +363,13 @@ class _StorageItem extends StatelessWidget {
     required this.icon,
     required this.label,
     required this.color,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -284,9 +394,11 @@ class _StorageItem extends StatelessWidget {
           label,
           style: Theme.of(context).textTheme.bodySmall,
         ),
-        onTap: () {},
+        trailing: onTap != null
+            ? Icon(Icons.chevron_right, size: 20, color: Colors.grey[400])
+            : null,
+        onTap: onTap,
       ),
     );
   }
 }
-
